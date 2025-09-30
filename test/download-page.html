@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download LinkedIn Profile for Testing</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        button { padding: 10px 20px; margin: 10px; background: #0077b5; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005885; }
+        .status { margin: 20px 0; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        #output { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LinkedIn Profile Page Downloader</h1>
+        <p>This tool will download a LinkedIn profile page and clean it for offline testing.</p>
+        
+        <div>
+            <label for="profileUrl">LinkedIn Profile URL:</label><br>
+            <input type="url" id="profileUrl" placeholder="https://www.linkedin.com/in/username/" style="width: 100%; padding: 8px; margin: 10px 0;">
+        </div>
+        
+        <button onclick="downloadProfile()">Download & Clean Profile</button>
+        <button onclick="downloadTestProfile()">Use Test Profile (Andrew Ruthenbeck)</button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        async function downloadProfile() {
+            const url = document.getElementById('profileUrl').value;
+            if (!url) {
+                showStatus('Please enter a LinkedIn profile URL', 'error');
+                return;
+            }
+            
+            showStatus('Downloading profile page...', '');
+            
+            try {
+                const response = await fetch(url, {
+                    mode: 'cors',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const html = await response.text();
+                const cleanedHtml = cleanHtml(html);
+                
+                // Save the cleaned HTML
+                const blob = new Blob([cleanedHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = 'linkedin-profile-test.html';
+                a.click();
+                URL.revokeObjectURL(downloadUrl);
+                
+                showStatus('Profile downloaded and cleaned successfully!', 'success');
+                
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error('Download error:', error);
+            }
+        }
+        
+        async function downloadTestProfile() {
+            document.getElementById('profileUrl').value = 'https://www.linkedin.com/in/andrew-ruthenbeck/';
+            await downloadProfile();
+        }
+        
+        function cleanHtml(html) {
+            // Remove tracking scripts and external resources
+            let cleaned = html
+                // Remove all script tags except our extension
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                // Remove external CSS links
+                .replace(/<link[^>]*href="https?:\/\/[^"]*"[^>]*>/gi, '')
+                // Remove external image sources (replace with placeholder)
+                .replace(/src="https?:\/\/[^"]*"/gi, 'src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNmM2Y0ZjYiLz4KPHN2ZyB4PSIxMCIgeT0iMTAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDIwIDIwIiBmaWxsPSJub25lIj4KPHBhdGggZD0iTTEwIDBDMTUuNTIyOCAwIDIwIDQuNDc3MTUgMjAgMTBDMjAgMTUuNTIyOCAxNS41MjI4IDIwIDEwIDIwQzQuNDc3MTUgMjAgMCAxNS41MjI4IDAgMTBDMCA0LjQ3NzE1IDQuNDc3MTUgMCAxMCAwWiIgZmlsbD0iI2NjY2NjYyIvPgo8L3N2Zz4KPC9zdmc+"')
+                // Remove analytics and tracking
+                .replace(/<script[^>]*src="[^"]*analytics[^"]*"[^>]*>[\s\S]*?<\/script>/gi, '')
+                .replace(/<script[^>]*src="[^"]*gtag[^"]*"[^>]*>[\s\S]*?<\/script>/gi, '')
+                .replace(/<script[^>]*src="[^"]*googletagmanager[^"]*"[^>]*>[\s\S]*?<\/script>/gi, '')
+                // Remove external fonts
+                .replace(/<link[^>]*href="https?:\/\/fonts\.googleapis\.com[^"]*"[^>]*>/gi, '')
+                // Remove meta tags that might cause issues
+                .replace(/<meta[^>]*property="og:[^"]*"[^>]*>/gi, '')
+                .replace(/<meta[^>]*name="twitter:[^"]*"[^>]*>/gi, '');
+            
+            // Add our extension content script
+            cleaned = cleaned.replace('</body>', `
+    <!-- Extension Content Script -->
+    <script src="../content.js"></script>
+    <link rel="stylesheet" href="../styles.css">
+    <script>
+        // Mock Chrome APIs for testing
+        if (typeof chrome === 'undefined') {
+            window.chrome = {
+                runtime: {
+                    onMessage: {
+                        addListener: function() {}
+                    },
+                    sendMessage: function() {}
+                },
+                storage: {
+                    sync: {
+                        get: function(keys, callback) {
+                            const result = { testMode: false, enabled: true };
+                            if (callback) callback(result);
+                            return Promise.resolve(result);
+                        },
+                        set: function(data, callback) {
+                            if (callback) callback();
+                            return Promise.resolve();
+                        }
+                    },
+                    local: {
+                        get: function(keys, callback) {
+                            const result = { detections: [] };
+                            if (callback) callback(result);
+                            return Promise.resolve(result);
+                        },
+                        set: function(data, callback) {
+                            if (callback) callback();
+                            return Promise.resolve();
+                        }
+                    }
+                },
+                tabs: {
+                    query: function(query, callback) {
+                        if (callback) callback([{ id: 1, url: window.location.href }]);
+                        return Promise.resolve([{ id: 1, url: window.location.href }]);
+                    },
+                    sendMessage: function(tabId, message, callback) {
+                        if (callback) callback();
+                        return Promise.resolve();
+                    }
+                }
+            };
+        }
+    </script>
+</body>`);
+            
+            return cleaned;
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

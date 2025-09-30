@@ -1,7 +1,16 @@
 // LinkedIn AI Bot Detector Content Script
-console.log('🚀 LinkedIn AI Bot Detector loaded and running!');
-console.log('🔧 Extension version: 1.0');
-console.log('🌐 Current URL:', window.location.href);
+// Use logger if available, otherwise fall back to console
+const log = (message, data = null) => {
+  if (window.extensionLogger) {
+    window.extensionLogger.info(message, data);
+  } else {
+    log(message, data);
+  }
+};
+
+log('🚀 LinkedIn AI Bot Detector loaded and running!');
+log('🔧 Extension version: 1.0');
+log('🌐 Current URL: ' + window.location.href);
 
 class AIDetector {
   constructor() {
@@ -11,6 +20,9 @@ class AIDetector {
     this.testMode = false;
     this.debugForcedOverlayShown = false;
     this.lastVerboseLogAtMs = 0;
+    this.isScanning = false;
+    this.pageScanned = false;
+    this.autoClickAttempted = false;
     this.init();
   }
 
@@ -19,13 +31,13 @@ class AIDetector {
     this.loadSettings();
     
     // Start detection when page loads
-    this.detectAIBots();
+    this.detectAIBots().catch(console.error);
     
     // Set up observer for dynamic content
     this.setupObserver();
     
     // Re-scan periodically for new content
-    setInterval(() => this.detectAIBots(), 5000);
+    setInterval(() => this.detectAIBots().catch(console.error), 5000);
   }
 
   async loadSettings() {
@@ -33,7 +45,7 @@ class AIDetector {
       const result = await chrome.storage.sync.get(['testMode']);
       this.testMode = result.testMode || false;
     } catch (error) {
-      console.log('Could not load settings:', error);
+      log('Could not load settings:', error);
     }
   }
 
@@ -96,7 +108,7 @@ class AIDetector {
         }
       });
       if (shouldRescan) {
-        setTimeout(() => this.detectAIBots(), 1000);
+        setTimeout(() => this.detectAIBots().catch(console.error), 1000);
       }
     });
 
@@ -109,25 +121,60 @@ class AIDetector {
   isOnProfilePage() {
     try {
       const path = location.pathname || '';
-      return /^\/in\//.test(path);
+      const hostname = location.hostname || '';
+      
+      // Check if we're on LinkedIn profile page
+      if (/^\/in\//.test(path)) {
+        return true;
+      }
+      
+      // Check if we're on the test page
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || 
+          location.protocol === 'file:' || 
+          path.includes('linkedin-test-profiles.html')) {
+        return true;
+      }
+      
+      return false;
     } catch (_) {
       return false;
     }
   }
 
-  detectAIBots() {
+  async detectAIBots() {
     const nowMs = Date.now();
     const shouldVerboseLog = nowMs - this.lastVerboseLogAtMs > 60_000;
-    if (!this.isOnProfilePage()) {
+    
+    // Prevent multiple simultaneous scans
+    if (this.isScanning) {
       if (shouldVerboseLog) {
-        console.log('⏭️ Skipping detection on non-profile page:', location.pathname);
-        this.lastVerboseLogAtMs = nowMs;
+        log('⏳ Scan already in progress, skipping...');
       }
       return;
     }
+    
+    // Prevent multiple scans on test pages
+    if (this.pageScanned) {
+      if (shouldVerboseLog) {
+        log('⏳ Page already scanned, skipping...');
+      }
+      return;
+    }
+    
+    this.isScanning = true;
+    this.pageScanned = true;
+    
+    if (!this.isOnProfilePage()) {
+      if (shouldVerboseLog) {
+        log('⏭️ Skipping detection on non-profile page:', location.pathname);
+        this.lastVerboseLogAtMs = nowMs;
+      }
+      this.isScanning = false;
+      return;
+    }
     if (shouldVerboseLog) {
-      console.log('🔍 Scanning for profiles...');
-      console.log('🧪 Test mode enabled:', this.testMode);
+      log('🔍 Scanning for profiles...');
+      log('🧪 Test mode enabled:', this.testMode);
     }
     
     // Scope queries to main profile content to avoid header/footer/sidebars
@@ -135,22 +182,93 @@ class AIDetector {
 
     // SINGLE PROFILE EVALUATION: find only the main profile image within the top card
     const topCard = mainContainer.querySelector('section.pv-top-card') || mainContainer.querySelector('.pv-top-card') || mainContainer;
-    const mainPhoto = topCard.querySelector('img.pv-top-card-profile-picture__image, .pv-top-card__photo img, img[alt*="profile photo" i], img[alt*="profile picture" i]');
+    
+    // More comprehensive selectors for LinkedIn profile photos
+    let mainPhoto = null;
+    
+    // Try multiple selector strategies
+    const selectors = [
+      'img.pv-top-card-profile-picture__image',
+      '.pv-top-card__photo img',
+      'img[alt*="profile photo" i]',
+      'img[alt*="profile picture" i]',
+      'img[alt*="stephen" i]',
+      'img[alt*="spates" i]',
+      'img[data-testid*="profile"]',
+      'img[aria-label*="profile" i]',
+      'img[aria-label*="photo" i]',
+      '.pv-top-card__photo-container img',
+      '.profile-photo img',
+      '.profile-picture img',
+      '.pv-top-card__photo img',
+      '.pv-top-card-profile-picture img',
+      '.profile-photo-container img',
+      '.profile-picture-container img',
+      'img[src*="profile"]',
+      'img[src*="photo"]',
+      'img[class*="profile"]',
+      'img[class*="photo"]'
+    ];
+    
+    for (const selector of selectors) {
+      mainPhoto = topCard.querySelector(selector);
+      if (mainPhoto) {
+        log('✅ Found profile photo with selector:', selector);
+        break;
+      }
+    }
 
     if (!mainPhoto) {
       if (shouldVerboseLog) {
-        console.log('❌ Main profile photo not found in main content');
+        log('❌ Main profile photo not found in main content');
+        log('🔍 Debugging: Available elements in topCard:');
+        log('  - All images:', topCard.querySelectorAll('img').length);
+        log('  - Images with alt text:', Array.from(topCard.querySelectorAll('img')).map(img => img.alt).filter(alt => alt));
+        log('  - Images with data-testid:', Array.from(topCard.querySelectorAll('img[data-testid]')).map(img => img.getAttribute('data-testid')));
+        log('  - Images with aria-label:', Array.from(topCard.querySelectorAll('img[aria-label]')).map(img => img.getAttribute('aria-label')));
+        log('  - All classes containing "photo" or "profile":', Array.from(topCard.querySelectorAll('*')).filter(el => el.className && (el.className.includes('photo') || el.className.includes('profile'))).map(el => el.className));
+        
+        // Try fallback: find any image in the top card area
+        let fallbackImage = topCard.querySelector('img');
+        if (!fallbackImage) {
+          // If no image in top card, try the main container
+          fallbackImage = mainContainer.querySelector('img');
+          log('🔄 Trying main container for fallback image');
+        }
+        if (fallbackImage) {
+          log('🔄 Using fallback image:', fallbackImage);
+          // Continue with fallback image
+          const profileInfo = await this.extractProfileInfo(fallbackImage);
+          if (shouldVerboseLog) log('📄 Profile summary (fallback):', profileInfo);
+          
+          if (this.testMode && this.isTestModeProfile(profileInfo)) {
+            if (shouldVerboseLog) log('🧪 Test mode: flagging fallback profile');
+            this.addOverlayIcon(fallbackImage);
+            return;
+          }
+          
+          const isAIBot = this.isAIBot(profileInfo);
+          const isVerified = !isAIBot && this.isVerifiedProfile(profileInfo);
+          if (shouldVerboseLog) log('📊 Result (fallback) → bot:', isAIBot, 'verified:', isVerified);
+          
+          if (isAIBot) {
+            this.addOverlayIcon(fallbackImage);
+          } else if (isVerified) {
+            this.addVerifiedIcon(fallbackImage);
+          }
+          return;
+        }
       }
       this.lastVerboseLogAtMs = nowMs;
       return;
     }
 
     // Build and evaluate a single profile summary from the main photo context
-    const profileInfo = this.extractProfileInfo(mainPhoto);
-    if (shouldVerboseLog) console.log('📄 Profile summary:', profileInfo);
+    const profileInfo = await this.extractProfileInfo(mainPhoto);
+    if (shouldVerboseLog) log('📄 Profile summary:', profileInfo);
 
     if (this.testMode && this.isTestModeProfile(profileInfo)) {
-      if (shouldVerboseLog) console.log('🧪 Test mode: flagging main profile');
+      if (shouldVerboseLog) log('🧪 Test mode: flagging main profile');
       this.addOverlayIcon(mainPhoto);
       this.lastVerboseLogAtMs = nowMs;
       return;
@@ -158,7 +276,14 @@ class AIDetector {
 
     const isAIBot = this.isAIBot(profileInfo);
     const isVerified = !isAIBot && this.isVerifiedProfile(profileInfo);
-    if (shouldVerboseLog) console.log('📊 Result → bot:', isAIBot, 'verified:', isVerified);
+    if (shouldVerboseLog) {
+      log('📊 Profile data for verification:');
+      log('  - Profile Age:', profileInfo.profileAge);
+      log('  - Connection Count:', profileInfo.connectionCount);
+      log('  - Profile Location:', profileInfo.profileLocation);
+      log('  - Company Location:', profileInfo.companyLocation);
+      log('📊 Result → bot:', isAIBot, 'verified:', isVerified);
+    }
 
     if (isAIBot) {
       this.addOverlayIcon(mainPhoto);
@@ -167,6 +292,7 @@ class AIDetector {
     }
 
     this.lastVerboseLogAtMs = nowMs;
+    this.isScanning = false;
     return;
 
     // The following legacy multi-element scan is disabled for profile pages
@@ -234,7 +360,7 @@ class AIDetector {
       const elements = Array.from(mainContainer.querySelectorAll(selector)) || [];
       totalFound += elements.length;
       if (shouldVerboseLog) {
-        console.log(`Found ${elements.length} elements with selector: ${selector}`);
+        log(`Found ${elements.length} elements with selector: ${selector}`);
       }
       elements.forEach(element => {
         allElements.push(element);
@@ -242,7 +368,7 @@ class AIDetector {
       });
     });
     if (shouldVerboseLog) {
-      console.log(`🔍 Total profile elements found: ${totalFound}`);
+      log(`🔍 Total profile elements found: ${totalFound}`);
       this.lastVerboseLogAtMs = nowMs;
     }
 
@@ -253,33 +379,33 @@ class AIDetector {
     if (!element || this.processedProfiles.has(element)) return;
     
     this.processedProfiles.add(element);
-    console.log('🔍 Processing profile element:', element);
+    log('🔍 Processing profile element:', element);
     
     // Get profile information
     const profileInfo = this.extractProfileInfo(element);
-    console.log('📋 Profile info extracted:', profileInfo);
+    log('📋 Profile info extracted:', profileInfo);
     
     // Check test mode first
     if (this.testMode && this.isTestModeProfile(profileInfo)) {
-      console.log('🧪 Test mode: Flagging profile with name starting with A');
+      log('🧪 Test mode: Flagging profile with name starting with A');
       this.addOverlayIcon(element);
       return;
     }
     
     // Check if this is an AI bot
     const isAIBot = this.isAIBot(profileInfo);
-    console.log('🤖 Is AI bot?', isAIBot);
+    log('🤖 Is AI bot?', isAIBot);
     
     if (isAIBot) {
-      console.log('🚨 Adding AI bot overlay');
+      log('🚨 Adding AI bot overlay');
       this.addOverlayIcon(element);
     } else if (this.isVerifiedProfile(profileInfo)) {
-      console.log('✅ Adding verified profile overlay');
+      log('✅ Adding verified profile overlay');
       this.addVerifiedIcon(element);
     }
   }
 
-  extractProfileInfo(element) {
+  async extractProfileInfo(element) {
     const info = {
       name: '',
       title: '',
@@ -312,12 +438,30 @@ class AIDetector {
       '.org-people-profile-card__profile-subtitle'
     ];
 
-    // Find name
+    // Find name - try multiple approaches
     for (const selector of nameSelectors) {
-      const nameElement = element.closest('*')?.querySelector(selector);
+      const nameElement = document.querySelector(selector);
       if (nameElement) {
         info.name = nameElement.textContent?.trim() || '';
+        if (info.name) break;
+      }
+    }
+    
+    // Try broader search if no name found
+    if (!info.name) {
+      const broaderSelectors = [
+        'h1',
+        '.pv-top-card__title',
+        '[data-testid*="name"]',
+        '[aria-label*="name"]'
+      ];
+      
+      for (const selector of broaderSelectors) {
+        const nameElement = document.querySelector(selector);
+        if (nameElement && nameElement.textContent?.trim()) {
+          info.name = nameElement.textContent.trim();
         break;
+        }
       }
     }
 
@@ -356,7 +500,7 @@ class AIDetector {
 
     // Find title/description
     for (const selector of titleSelectors) {
-      const titleElement = element.closest('*')?.querySelector(selector);
+      const titleElement = document.querySelector(selector);
       if (titleElement) {
         info.title = titleElement.textContent?.trim() || '';
         break;
@@ -370,12 +514,15 @@ class AIDetector {
     }
 
     // Extract profile characteristics
-    this.extractProfileCharacteristics(element, info);
+    await this.extractProfileCharacteristics(element, info);
 
     return info;
   }
 
-  extractProfileCharacteristics(element, info) {
+  async extractProfileCharacteristics(element, info) {
+    // First, try to get profile age by clicking "More" button and "About this profile"
+    await this.attemptToGetProfileAge(info);
+    
     // Try to find connection count
     const connectionSelectors = [
       '.pv-top-card__connections',
@@ -386,13 +533,48 @@ class AIDetector {
     ];
 
     for (const selector of connectionSelectors) {
-      const connectionElement = element.closest('*')?.querySelector(selector);
+      const connectionElement = document.querySelector(selector);
+      if (connectionElement) {
+        const connectionText = connectionElement.textContent?.trim() || '';
+        log('🔍 Connection text found:', connectionText);
+        
+        // Try multiple patterns for connection count
+        const patterns = [
+          /(\d+)\s*connections?/i,
+          /(\d+)\+/i,
+          /(\d+)\s*connections?/i
+        ];
+        
+        for (const pattern of patterns) {
+          const match = connectionText.match(pattern);
+          if (match) {
+            info.connectionCount = parseInt(match[1]);
+            log('✅ Connection count extracted:', info.connectionCount);
+            break;
+          }
+        }
+        
+        if (info.connectionCount !== null) break;
+      }
+    }
+    
+    // Try broader search for connection count
+    if (info.connectionCount === null) {
+      const broaderConnectionSelectors = [
+        '.pv-top-card__connections',
+        '[data-testid*="connection"]',
+        '[aria-label*="connection"]'
+      ];
+      
+      for (const selector of broaderConnectionSelectors) {
+        const connectionElement = document.querySelector(selector);
       if (connectionElement) {
         const connectionText = connectionElement.textContent?.trim() || '';
         const connectionMatch = connectionText.match(/(\d+)\s*connections?/i);
         if (connectionMatch) {
           info.connectionCount = parseInt(connectionMatch[1]);
           break;
+          }
         }
       }
     }
@@ -407,7 +589,7 @@ class AIDetector {
     ];
 
     for (const selector of locationSelectors) {
-      const locationElement = element.closest('*')?.querySelector(selector);
+      const locationElement = document.querySelector(selector);
       if (locationElement) {
         info.profileLocation = locationElement.textContent?.trim() || '';
         break;
@@ -424,27 +606,46 @@ class AIDetector {
     ];
 
     for (const selector of companySelectors) {
-      const companyElement = element.closest('*')?.querySelector(selector);
+      const companyElement = document.querySelector(selector);
       if (companyElement) {
         const companyText = companyElement.textContent?.trim() || '';
+        log('🔍 Company text found:', companyText);
+        
         // Extract company name and location from text like "Company Name · Location"
         const parts = companyText.split('·');
         if (parts.length >= 2) {
           info.companyName = parts[0].trim();
           info.companyLocation = parts[1].trim();
+          log('✅ Company info extracted:', info.companyName, info.companyLocation);
         } else {
           info.companyName = companyText;
+          log('✅ Company name extracted:', info.companyName);
         }
         break;
       }
     }
+    
+    // If no company location found, try to extract from title
+    if (!info.companyLocation && info.title) {
+      log('🔍 Trying to extract company location from title:', info.title);
+      const titleMatch = info.title.match(/at\s+.+?\s+in\s+(.+)$/i);
+      if (titleMatch) {
+        info.companyLocation = titleMatch[1].trim();
+        log('✅ Company location extracted from title:', info.companyLocation);
+      }
+    }
 
     // Try to find profile creation date (this is harder to detect on LinkedIn)
-    // We'll look for "Joined LinkedIn" text or similar indicators
+    // Note: Profile age is often hidden behind "More" button and "About this profile" link
     const dateSelectors = [
       '.pv-top-card__joined-date',
       '.feed-shared-actor__date',
-      '.update-components-actor__date'
+      '.update-components-actor__date',
+      // Try to find "About this profile" or similar elements
+      '[data-testid*="about"]',
+      '[aria-label*="about"]',
+      '.pv-about-section',
+      '.about-section'
     ];
 
     for (const selector of dateSelectors) {
@@ -452,9 +653,182 @@ class AIDetector {
       if (dateElement) {
         const dateText = dateElement.textContent?.trim() || '';
         info.profileAge = this.parseProfileAge(dateText);
-        break;
+        if (info.profileAge !== null) break;
       }
     }
+    
+    // If no age found, try to look for "Joined LinkedIn" text in broader context
+    if (info.profileAge === null) {
+      const joinedSelectors = [
+        '.pv-top-card__experience-list-item',
+        '.pv-top-card__headline',
+        '.pv-top-card__sub-headline',
+        '.pv-top-card__location'
+      ];
+      
+      for (const selector of joinedSelectors) {
+        const joinedElement = element.closest('*')?.querySelector(selector);
+        if (joinedElement) {
+          const joinedText = joinedElement.textContent?.trim() || '';
+          if (joinedText.includes('Joined LinkedIn')) {
+            // We found a "Joined LinkedIn" reference but can't extract age
+            // This is common - the actual age is often hidden behind "More" button
+            log('Found "Joined LinkedIn" reference but age not accessible without user interaction');
+        break;
+          }
+        }
+      }
+    }
+  }
+
+  async attemptToGetProfileAge(info) {
+    try {
+      // Prevent multiple auto-click attempts
+      if (this.autoClickAttempted) {
+        log('⏳ Auto-click already attempted, skipping...');
+        return;
+      }
+      
+      this.autoClickAttempted = true;
+      log('🔍 Attempting to get profile age by clicking More button...');
+      
+      // Look for the "More" button
+      const moreButtonSelectors = [
+        'button[aria-label*="More"]',
+        'button[aria-label*="more"]',
+        '.pv-top-card__actions button',
+        '.pv-top-card__action-buttons button',
+        'button[data-testid*="more"]'
+      ];
+      
+      let moreButton = null;
+      for (const selector of moreButtonSelectors) {
+        moreButton = document.querySelector(selector);
+        if (moreButton) {
+          log('✅ Found More button with selector:', selector);
+          break;
+        }
+      }
+      
+      if (!moreButton) {
+        log('❌ More button not found');
+        return;
+      }
+      
+      // Click the More button
+      moreButton.click();
+      log('🖱️ Clicked More button');
+      
+      // Wait a moment for the menu to appear
+      await this.sleep(1000);
+      
+      // Look for "About this profile" link
+      const aboutProfileSelectors = [
+        'a[href*="about"]',
+        '.pv-top-card__menu a',
+        '[data-testid*="about"]'
+      ];
+      
+      let aboutLink = null;
+      for (const selector of aboutProfileSelectors) {
+        aboutLink = document.querySelector(selector);
+        if (aboutLink && aboutLink.textContent.toLowerCase().includes('about')) {
+          log('✅ Found About this profile link with selector:', selector);
+          break;
+        }
+      }
+      
+      if (!aboutLink) {
+        log('❌ About this profile link not found');
+        return;
+      }
+      
+      // Click the About this profile link
+      aboutLink.click();
+      log('🖱️ Clicked About this profile link');
+      
+      // Wait for the dialog to appear
+      await this.sleep(2000);
+      
+            // Look for profile age information in the dialog
+            const ageDialogSelectors = [
+              '.about-profile-dialog',
+              '.about-profile-content',
+              '.about-profile-body',
+              '.about-profile-detail-value',
+              '#about-profile-joined',
+              '.pv-about-section',
+              '.about-section',
+              '[data-testid*="about"]',
+              '.profile-about',
+              '.pv-profile-section'
+            ];
+      
+      for (const selector of ageDialogSelectors) {
+        const dialogElement = document.querySelector(selector);
+        if (dialogElement) {
+          const dialogText = dialogElement.textContent?.trim() || '';
+          log('📄 Dialog content found:', dialogText.substring(0, 200) + '...');
+          
+          // Try to parse age from dialog content
+          const age = this.parseProfileAge(dialogText);
+          if (age !== null && age !== undefined) {
+            info.profileAge = age;
+            log('✅ Profile age extracted from dialog:', age);
+            break;
+          }
+          
+          // Try to extract from "Joined" text specifically
+          if (dialogText.includes('Joined:') || dialogText.includes('September')) {
+            const joinedMatch = dialogText.match(/Joined:\s*(.+?)(?:\n|$)/i);
+            if (joinedMatch) {
+              const joinedText = joinedMatch[1].trim();
+              const age = this.parseProfileAge(joinedText);
+              if (age !== null && age !== undefined) {
+                info.profileAge = age;
+                log('✅ Profile age extracted from Joined text:', age);
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+            // Close the dialog by clicking outside or pressing Escape
+            try {
+              // Try multiple methods to close the dialog
+              document.body.click();
+              await this.sleep(500);
+              
+              // Try pressing Escape key
+              const escapeEvent = new KeyboardEvent('keydown', {
+                key: 'Escape',
+                keyCode: 27,
+                which: 27,
+                bubbles: true
+              });
+              document.dispatchEvent(escapeEvent);
+              await this.sleep(500);
+              
+              // Try clicking the backdrop if it exists
+              const backdrop = document.querySelector('.artdeco-modal-overlay, .modal-backdrop, .dialog-overlay');
+              if (backdrop) {
+                backdrop.click();
+                await this.sleep(500);
+              }
+              
+              log('✅ Dialog closed successfully');
+            } catch (error) {
+              log('❌ Error closing dialog:', error);
+            }
+      
+    } catch (error) {
+      log('❌ Error getting profile age:', error);
+    }
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   parseProfileAge(dateText) {
@@ -466,6 +840,17 @@ class AIDetector {
     if (yearMatch) {
       const year = parseInt(yearMatch[1]);
       const joinDate = new Date(year, 0, 1); // Assume January 1st of that year
+      return Math.floor((now - joinDate) / (1000 * 60 * 60 * 24));
+    }
+
+    // Look for "September 2022" or similar month-year format
+    const monthYearMatch = dateText.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/i);
+    if (monthYearMatch) {
+      const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                          'july', 'august', 'september', 'october', 'november', 'december'];
+      const monthIndex = monthNames.indexOf(monthYearMatch[1].toLowerCase());
+      const year = parseInt(monthYearMatch[2]);
+      const joinDate = new Date(year, monthIndex, 1); // First day of that month
       return Math.floor((now - joinDate) / (1000 * 60 * 60 * 24));
     }
 
@@ -495,7 +880,7 @@ class AIDetector {
   isAIBot(profileInfo) {
     const suspiciousIndicators = [];
     
-    // Check profile age (less than 30 days)
+    // Check profile age (less than 30 days) - Note: Often hidden behind "More" button
     if (profileInfo.profileAge !== null && profileInfo.profileAge < 30) {
       suspiciousIndicators.push(`Profile created ${profileInfo.profileAge} days ago`);
     }
@@ -519,7 +904,7 @@ class AIDetector {
     
     // Log detection details for debugging
     if (suspiciousIndicators.length > 0) {
-      console.log('Suspicious profile detected:', {
+      log('Suspicious profile detected:', {
         name: profileInfo.name,
         indicators: suspiciousIndicators,
         profileAge: profileInfo.profileAge,
@@ -529,7 +914,7 @@ class AIDetector {
       });
     }
     
-    // Consider it suspicious if it has 2 or more indicators (restore to reduce false positives)
+    // Consider it suspicious if it has 2 or more indicators
     return suspiciousIndicators.length >= 2;
   }
 
@@ -568,15 +953,24 @@ class AIDetector {
   hasSuspiciousPatterns(profileInfo) {
     const combinedText = `${profileInfo.name} ${profileInfo.title} ${profileInfo.description}`.toLowerCase();
     
+    // Skip suspicious pattern detection for test pages
+    if (combinedText.includes('linkedin ai detector') || 
+        combinedText.includes('test profiles') ||
+        combinedText.includes('🤖')) {
+      return false;
+    }
+    
     // Look for very generic or automated-sounding content
     const suspiciousPatterns = [
-      // Generic names that might indicate automation
-      /^[a-z]+\s+[a-z]+$/i,  // Very simple name patterns
+      // Generic names that might indicate automation (but exclude legitimate names)
       /^user\d+$/i,          // User123, User456, etc.
       /^test\s+user/i,       // Test User
       /^demo\s+account/i,    // Demo Account
+      /^bot\d+$/i,           // Bot123, Bot456, etc.
+      /^ai\s+assistant$/i,    // AI Assistant
+      /^automated\s+user$/i, // Automated User
       
-      // Suspicious title patterns
+      // Suspicious title patterns (only very generic ones)
       /^software engineer$/i,
       /^developer$/i,
       /^consultant$/i,
@@ -641,30 +1035,41 @@ class AIDetector {
     // Consider a profile verified if it has strong indicators of legitimacy
     const verifiedIndicators = [];
     
+    log('🔍 Checking verification indicators for:', profileInfo.name);
+    
     // Profile age (more than 1 year old)
     if (profileInfo.profileAge !== null && profileInfo.profileAge > 365) {
       verifiedIndicators.push('Profile older than 1 year');
+      log('✅ Profile age indicator:', profileInfo.profileAge, 'days');
+    } else {
+      log('❌ Profile age not sufficient:', profileInfo.profileAge, 'days');
     }
     
-    // High connection count (more than 500 connections)
-    if (profileInfo.connectionCount !== null && profileInfo.connectionCount > 500) {
+    // High connection count (30 or more connections)
+    if (profileInfo.connectionCount !== null && profileInfo.connectionCount >= 30) {
       verifiedIndicators.push('High connection count');
+      log('✅ Connection count indicator:', profileInfo.connectionCount, 'connections');
+    } else {
+      log('❌ Connection count not sufficient:', profileInfo.connectionCount, 'connections');
     }
     
     // Location consistency
     if (profileInfo.profileLocation && profileInfo.companyLocation) {
       if (this.locationsMatch(profileInfo.profileLocation, profileInfo.companyLocation)) {
         verifiedIndicators.push('Location consistency');
+        log('✅ Location consistency indicator:', profileInfo.profileLocation, 'vs', profileInfo.companyLocation);
+      } else {
+        log('❌ Location mismatch:', profileInfo.profileLocation, 'vs', profileInfo.companyLocation);
       }
+    } else {
+      log('❌ Missing location data - Profile:', profileInfo.profileLocation, 'Company:', profileInfo.companyLocation);
     }
     
-    // Professional indicators
-    if (this.hasProfessionalIndicators(profileInfo)) {
-      verifiedIndicators.push('Professional indicators');
-    }
-    
-    // Consider verified if it has 3 or more positive indicators (restore threshold)
-    return verifiedIndicators.length >= 3;
+    // Consider verified if it has all 3 positive indicators
+    log('📊 Verification result:', verifiedIndicators.length, 'indicators found:', verifiedIndicators);
+    const isVerified = verifiedIndicators.length >= 3;
+    log('✅ Profile verified:', isVerified);
+    return isVerified;
   }
 
   hasProfessionalIndicators(profileInfo) {
@@ -681,11 +1086,11 @@ class AIDetector {
   }
 
   addOverlayIcon(element) {
-    console.log('🎯 Adding overlay icon to element:', element);
+    log('🎯 Adding overlay icon to element:', element);
     
     // Check if overlay already exists
     if (element.querySelector('.ai-bot-overlay')) {
-      console.log('⚠️ Overlay already exists, skipping');
+      log('⚠️ Overlay already exists, skipping');
       return;
     }
 
@@ -695,7 +1100,7 @@ class AIDetector {
       const computedStyle = window.getComputedStyle(container);
       if (computedStyle.position === 'static') {
         container.style.position = 'relative';
-        console.log('📍 Set container position to relative');
+        log('📍 Set container position to relative');
       }
     }
 
@@ -718,9 +1123,115 @@ class AIDetector {
     if (imageContainer) {
       imageContainer.style.position = 'relative';
       imageContainer.appendChild(overlay);
-      console.log('✅ Overlay icon added successfully');
+      log('✅ Overlay icon added successfully');
     } else {
-      console.log('❌ Could not find suitable container for overlay');
+      log('❌ Could not find suitable container for overlay');
+    }
+
+    // Show popup dialog for AI bot detection
+    this.showAIBotPopup(element);
+  }
+
+  showAIBotPopup(element) {
+    // Check if popup already exists
+    if (document.querySelector('.ai-bot-popup-overlay')) {
+      log('⚠️ AI bot popup already exists, skipping');
+      return;
+    }
+
+    log('🚨 Showing AI bot detection popup');
+
+    // Get profile information for the popup
+    const profileInfo = this.extractProfileInfo(element);
+    const suspiciousIndicators = this.getSuspiciousIndicators(profileInfo);
+
+    // Create popup overlay
+    const popupOverlay = document.createElement('div');
+    popupOverlay.className = 'ai-bot-popup-overlay';
+    popupOverlay.innerHTML = `
+      <div class="ai-bot-popup-dialog">
+        <div class="ai-bot-popup-header">
+          <div class="ai-bot-popup-icon">🤖</div>
+          <h2 class="ai-bot-popup-title">Potential AI Bot Detected</h2>
+        </div>
+        <div class="ai-bot-popup-message">
+          This profile has been flagged as potentially being an AI bot. Please review the reasons below before proceeding.
+        </div>
+        <div class="ai-bot-popup-reasons">
+          <div class="ai-bot-popup-reasons-title">Detection Reasons:</div>
+          <ul class="ai-bot-popup-reasons-list">
+            ${suspiciousIndicators.map(indicator => `<li>${indicator}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="ai-bot-popup-buttons">
+          <button class="ai-bot-popup-button ai-bot-popup-button-cancel" onclick="window.linkedinAIDetector.handlePopupCancel()">
+            Go Back
+          </button>
+          <button class="ai-bot-popup-button ai-bot-popup-button-continue" onclick="window.linkedinAIDetector.handlePopupContinue()">
+            Continue Anyway
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Add to document
+    document.body.appendChild(popupOverlay);
+
+    // Store reference for cleanup
+    this.currentPopup = popupOverlay;
+  }
+
+  getSuspiciousIndicators(profileInfo) {
+    const indicators = [];
+    
+    // Check profile age (less than 30 days)
+    if (profileInfo.profileAge !== null && profileInfo.profileAge < 30) {
+      indicators.push(`Profile created ${profileInfo.profileAge} days ago`);
+    }
+    
+    // Check connection count (less than 10 connections)
+    if (profileInfo.connectionCount !== null && profileInfo.connectionCount < 10) {
+      indicators.push(`Only ${profileInfo.connectionCount} connections`);
+    }
+    
+    // Check location mismatch between profile and company
+    if (profileInfo.profileLocation && profileInfo.companyLocation) {
+      if (!this.locationsMatch(profileInfo.profileLocation, profileInfo.companyLocation)) {
+        indicators.push(`Location mismatch: Profile (${profileInfo.profileLocation}) vs Company (${profileInfo.companyLocation})`);
+      }
+    }
+    
+    // Additional suspicious patterns
+    if (this.hasSuspiciousPatterns(profileInfo)) {
+      indicators.push('Suspicious profile patterns detected');
+    }
+
+    return indicators;
+  }
+
+  handlePopupCancel() {
+    log('🚫 User chose to go back');
+    this.hideAIBotPopup();
+    
+    // Go back to previous page
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      // If no history, redirect to LinkedIn home
+      window.location.href = 'https://www.linkedin.com/feed/';
+    }
+  }
+
+  handlePopupContinue() {
+    log('✅ User chose to continue');
+    this.hideAIBotPopup();
+  }
+
+  hideAIBotPopup() {
+    if (this.currentPopup) {
+      this.currentPopup.remove();
+      this.currentPopup = null;
+      log('🗑️ AI bot popup removed');
     }
   }
 
@@ -768,7 +1279,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (detector) {
       detector.testMode = request.testMode;
       // Re-scan with new settings
-      detector.detectAIBots();
+      detector.detectAIBots().catch(console.error);
     }
   }
 });
@@ -781,21 +1292,21 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     detectorInstance = new AIDetector();
     window.linkedinAIDetector = detectorInstance;
-    console.log('🚀 LinkedIn AI Detector initialized on DOMContentLoaded');
+    log('🚀 LinkedIn AI Detector initialized on DOMContentLoaded');
   });
 } else {
   detectorInstance = new AIDetector();
   window.linkedinAIDetector = detectorInstance;
-  console.log('🚀 LinkedIn AI Detector initialized immediately');
+  log('🚀 LinkedIn AI Detector initialized immediately');
 }
 
 // Add manual trigger for testing
 window.testLinkedInDetector = function() {
-  console.log('🧪 Manual test triggered');
+  log('🧪 Manual test triggered');
   if (window.linkedinAIDetector) {
-    window.linkedinAIDetector.detectAIBots();
+    window.linkedinAIDetector.detectAIBots().catch(console.error);
   } else {
-    console.log('❌ Detector not initialized');
+    log('❌ Detector not initialized');
   }
 };
 

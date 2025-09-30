@@ -6,6 +6,7 @@ A Chrome browser extension that identifies AI bots on LinkedIn and adds overlay 
 
 - 🤖 **Suspicious Profile Detection**: Identifies potentially fake or bot accounts based on profile characteristics
 - 🎯 **Visual Indicators**: Adds red overlay icons to detected suspicious profiles
+- 🚨 **Popup Dialog**: Shows detailed warning popup when AI bots are detected with specific reasons
 - 📊 **Statistics**: Tracks detection counts and shows recent detections
 - ⚙️ **Customizable**: Adjustable sensitivity levels and notification settings
 - 🔄 **Real-time**: Continuously monitors LinkedIn pages for new content
@@ -61,6 +62,15 @@ The extension identifies suspicious profiles based on behavioral and profile cha
 4. **Suspicious Pattern Detection**:
    - Generic or automated-sounding names
    - Very short or empty profile descriptions
+
+### Popup Dialog System
+
+When an AI bot is detected, the extension shows a popup dialog that:
+
+- **Prevents Page Interaction**: Blocks all page interactions until user responds
+- **Shows Detection Reasons**: Lists specific indicators that triggered the detection
+- **User Choice**: Provides "Go Back" and "Continue Anyway" options
+- **Navigation Control**: Cancel button navigates back to previous page
    - Repeated character patterns
    - Test accounts or demo profiles
 

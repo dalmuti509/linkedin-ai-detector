@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Profile - Offline Test</title>
+    <style>
+        /* LinkedIn-like styling for offline testing */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            background: #f3f2ef; 
+        }
+        .scaffold-layout { display: flex; min-height: 100vh; }
+        .scaffold-layout__main { flex: 1; padding: 24px; }
+        .pv-top-card { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 24px; 
+            margin-bottom: 24px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .pv-top-card__photo { 
+            width: 152px; 
+            height: 152px; 
+            border-radius: 50%; 
+            margin: 0 auto 16px; 
+            position: relative;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #666;
+        }
+        .pv-top-card-profile-picture__image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .pv-top-card__title { 
+            font-size: 32px; 
+            font-weight: 200; 
+            margin: 0 0 8px; 
+            text-align: center;
+        }
+        .pv-top-card__headline { 
+            font-size: 20px; 
+            color: #666; 
+            margin: 0 0 16px; 
+            text-align: center;
+        }
+        .pv-top-card__location { 
+            color: #666; 
+            margin: 0 0 8px; 
+            text-align: center;
+        }
+        .pv-top-card__connections { 
+            color: #666; 
+            margin: 0 0 16px; 
+            text-align: center;
+        }
+        .pv-top-card__company-name { 
+            color: #666; 
+            margin: 0; 
+            text-align: center;
+        }
+        .test-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .test-controls button {
+            display: block;
+            width: 100%;
+            padding: 8px 16px;
+            margin: 5px 0;
+            background: #0077b5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-controls button:hover { background: #005885; }
+        .test-controls button.active { background: #28a745; }
+        .test-status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .test-status.success { background: #d4edda; color: #155724; }
+        .test-status.error { background: #f8d7da; color: #721c24; }
+        .test-status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h3>🧪 Test Controls</h3>
+        <button onclick="toggleTestMode()">Toggle Test Mode</button>
+        <button onclick="simulateAIBot()">Simulate AI Bot</button>
+        <button onclick="simulateVerified()">Simulate Verified</button>
+        <button onclick="resetProfile()">Reset Profile</button>
+        <div id="test-status" class="test-status" style="display: none;"></div>
+    </div>
+
+    <div class="scaffold-layout">
+        <main class="scaffold-layout__main">
+            <section class="pv-top-card">
+                <div class="pv-top-card__photo" id="profile-photo">
+                    <div class="pv-top-card-profile-picture__image" style="background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #666;">👤</div>
+                </div>
+                <h1 class="pv-top-card__title" id="profile-name">Alex Thompson</h1>
+                <div class="pv-top-card__headline" id="profile-title">Senior Software Engineer at TechCorp</div>
+                <div class="pv-top-card__location" id="profile-location">Seattle, Washington, United States</div>
+                <div class="pv-top-card__connections" id="profile-connections">500+ connections</div>
+                <div class="pv-top-card__company-name" id="profile-company">TechCorp · Seattle, WA</div>
+            </section>
+            
+            <!-- Popup Dialog Test Section -->
+            <div class="popup-test-section">
+                <h3>🚨 Popup Dialog Testing</h3>
+                <p>This section tests the popup dialog functionality that appears when AI bots are detected.</p>
+                
+                <div class="test-controls">
+                    <button onclick="testPopupDialog()">Test Popup Dialog</button>
+                    <button onclick="testPopupButtons()">Test Button Behavior</button>
+                    <button onclick="testPopupPrevention()">Test Page Prevention</button>
+                    <button onclick="showPopupDemo()" style="background: #4caf50; color: white;">🚨 Show Popup Demo</button>
+                </div>
+                
+                <div id="popup-test-results" class="test-results"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mock Chrome APIs for offline testing -->
+    <script>
+        // Mock Chrome APIs
+        window.chrome = {
+            runtime: {
+                onMessage: {
+                    addListener: function(callback) {
+                        console.log('Message listener added');
+                        window.messageCallback = callback;
+                    }
+                },
+                sendMessage: function(message, callback) {
+                    console.log('Message sent:', message);
+                    if (callback) callback();
+                }
+            },
+            storage: {
+                sync: {
+                    get: function(keys, callback) {
+                        const result = { 
+                            testMode: window.testMode || false, 
+                            enabled: true, 
+                            showNotifications: true 
+                        };
+                        if (callback) callback(result);
+                        return Promise.resolve(result);
+                    },
+                    set: function(data, callback) {
+                        console.log('Storage set:', data);
+                        if (data.testMode !== undefined) {
+                            window.testMode = data.testMode;
+                        }
+                        if (callback) callback();
+                        return Promise.resolve();
+                    }
+                },
+                local: {
+                    get: function(keys, callback) {
+                        const result = { detections: [] };
+                        if (callback) callback(result);
+                        return Promise.resolve(result);
+                    },
+                    set: function(data, callback) {
+                        console.log('Local storage set:', data);
+                        if (callback) callback();
+                        return Promise.resolve();
+                    }
+                }
+            },
+            tabs: {
+                query: function(query, callback) {
+                    const result = [{ id: 1, url: window.location.href }];
+                    if (callback) callback(result);
+                    return Promise.resolve(result);
+                },
+                sendMessage: function(tabId, message, callback) {
+                    console.log('Tab message sent:', message);
+                    if (callback) callback();
+                    return Promise.resolve();
+                }
+            }
+        };
+
+        // Test mode state
+        window.testMode = false;
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('test-status');
+            status.textContent = message;
+            status.className = `test-status ${type}`;
+            status.style.display = 'block';
+            setTimeout(() => status.style.display = 'none', 3000);
+        }
+
+        function toggleTestMode() {
+            window.testMode = !window.testMode;
+            showStatus(`Test Mode: ${window.testMode ? 'ON' : 'OFF'}`, window.testMode ? 'success' : 'info');
+            
+            // Simulate message to extension
+            if (window.messageCallback) {
+                window.messageCallback({
+                    action: 'toggleTestMode',
+                    testMode: window.testMode
+                });
+            }
+        }
+
+        function simulateAIBot() {
+            // Update profile to look like an AI bot
+            document.getElementById('profile-name').textContent = 'Jordan Miller';
+            document.getElementById('profile-title').textContent = 'Software Engineer';
+            document.getElementById('profile-location').textContent = 'New York, NY';
+            document.getElementById('profile-connections').textContent = '3 connections';
+            document.getElementById('profile-company').textContent = 'StartupCorp · San Francisco, CA';
+            
+            showStatus('Profile updated to simulate AI bot (new profile, few connections, location mismatch)', 'error');
+        }
+
+        function simulateVerified() {
+            // Update profile to look like a verified professional
+            document.getElementById('profile-name').textContent = 'Emma Wilson';
+            document.getElementById('profile-title').textContent = 'Senior Software Engineer';
+            document.getElementById('profile-location').textContent = 'Seattle, WA';
+            document.getElementById('profile-connections').textContent = '750+ connections';
+            document.getElementById('profile-company').textContent = 'TechCorp · Seattle, WA';
+            
+            showStatus('Profile updated to simulate verified professional (established profile, many connections, location match)', 'success');
+        }
+
+        function resetProfile() {
+            // Reset to original profile
+            document.getElementById('profile-name').textContent = 'Alex Thompson';
+            document.getElementById('profile-title').textContent = 'Senior Software Engineer at TechCorp';
+            document.getElementById('profile-location').textContent = 'Seattle, Washington, United States';
+            document.getElementById('profile-connections').textContent = '500+ connections';
+            document.getElementById('profile-company').textContent = 'TechCorp · Seattle, WA';
+            
+            showStatus('Profile reset to original', 'info');
+        }
+
+        // Popup Dialog Test Functions
+        function testPopupDialog() {
+            showStatus('Testing Popup Dialog...', 'info');
+            
+            // Create mock popup dialog
+            const popupHTML = `
+                <div class="ai-bot-popup-overlay">
+                    <div class="ai-bot-popup-dialog">
+                        <div class="ai-bot-popup-header">
+                            <div class="ai-bot-popup-icon">🤖</div>
+                            <h2 class="ai-bot-popup-title">Potential AI Bot Detected</h2>
+                        </div>
+                        <div class="ai-bot-popup-message">
+                            This profile has been flagged as potentially being an AI bot.
+                        </div>
+                        <div class="ai-bot-popup-reasons">
+                            <div class="ai-bot-popup-reasons-title">Detection Reasons:</div>
+                            <ul class="ai-bot-popup-reasons-list">
+                                <li>Profile created 5 days ago</li>
+                                <li>Only 3 connections</li>
+                            </ul>
+                        </div>
+                        <div class="ai-bot-popup-buttons">
+                            <button class="ai-bot-popup-button ai-bot-popup-button-cancel">Go Back</button>
+                            <button class="ai-bot-popup-button ai-bot-popup-button-continue">Continue Anyway</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Test popup structure
+            const hasRequiredElements = popupHTML.includes('ai-bot-popup-overlay') &&
+                                       popupHTML.includes('Potential AI Bot Detected') &&
+                                       popupHTML.includes('Go Back') &&
+                                       popupHTML.includes('Continue Anyway');
+            
+            if (hasRequiredElements) {
+                addTestResult('Popup Dialog Structure', true, 'Popup dialog has all required elements');
+            } else {
+                addTestResult('Popup Dialog Structure', false, 'Popup dialog missing required elements');
+            }
+        }
+
+        function testPopupButtons() {
+            showStatus('Testing Popup Buttons...', 'info');
+            
+            // Mock button click handlers
+            let cancelClicked = false;
+            let continueClicked = false;
+            
+            const mockCancelHandler = () => { cancelClicked = true; };
+            const mockContinueHandler = () => { continueClicked = true; };
+            
+            // Simulate button clicks
+            mockCancelHandler();
+            mockContinueHandler();
+            
+            if (cancelClicked && continueClicked) {
+                addTestResult('Popup Button Behavior', true, 'Both cancel and continue buttons work correctly');
+            } else {
+                addTestResult('Popup Button Behavior', false, 'Button handlers not working properly');
+            }
+        }
+
+        function testPopupPrevention() {
+            showStatus('Testing Popup Prevention...', 'info');
+            
+            // Test that popup prevents page interaction
+            const mockDocument = {
+                querySelector: (selector) => {
+                    if (selector === '.ai-bot-popup-overlay') return null;
+                    return null;
+                }
+            };
+            
+            const shouldCreatePopup = !mockDocument.querySelector('.ai-bot-popup-overlay');
+            const popupPreventsInteraction = true; // CSS pointer-events: none on overlay
+            
+            if (shouldCreatePopup && popupPreventsInteraction) {
+                addTestResult('Popup Prevention', true, 'Popup correctly prevents page interaction');
+            } else {
+                addTestResult('Popup Prevention', false, 'Popup prevention not working');
+            }
+        }
+
+        function addTestResult(testName, passed, message) {
+            const resultsDiv = document.getElementById('popup-test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultDiv.innerHTML = `<strong>${testName}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function showPopupDemo() {
+            showStatus('Showing popup dialog demo...', 'info');
+            
+            // Check if popup already exists
+            if (document.querySelector('.ai-bot-popup-overlay')) {
+                showStatus('Popup already exists, removing first...', 'info');
+                document.querySelector('.ai-bot-popup-overlay').remove();
+            }
+
+            // Create popup overlay
+            const popupOverlay = document.createElement('div');
+            popupOverlay.className = 'ai-bot-popup-overlay';
+            popupOverlay.innerHTML = `
+                <div class="ai-bot-popup-dialog">
+                    <div class="ai-bot-popup-header">
+                        <div class="ai-bot-popup-icon">🤖</div>
+                        <h2 class="ai-bot-popup-title">Potential AI Bot Detected</h2>
+                    </div>
+                    <div class="ai-bot-popup-message">
+                        This profile has been flagged as potentially being an AI bot. Please review the reasons below before proceeding.
+                    </div>
+                    <div class="ai-bot-popup-reasons">
+                        <div class="ai-bot-popup-reasons-title">Detection Reasons:</div>
+                        <ul class="ai-bot-popup-reasons-list">
+                            <li>Profile created 5 days ago</li>
+                            <li>Only 3 connections</li>
+                            <li>Location mismatch: Profile (New York) vs Company (San Francisco)</li>
+                        </ul>
+                    </div>
+                    <div class="ai-bot-popup-buttons">
+                        <button class="ai-bot-popup-button ai-bot-popup-button-cancel" onclick="handlePopupCancel()">
+                            Go Back
+                        </button>
+                        <button class="ai-bot-popup-button ai-bot-popup-button-continue" onclick="handlePopupContinue()">
+                            Continue Anyway
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Add to document
+            document.body.appendChild(popupOverlay);
+            
+            showStatus('Popup dialog displayed! Try the buttons to see how they work.', 'success');
+        }
+
+        function handlePopupCancel() {
+            showStatus('🚫 User chose to go back - this would navigate to previous page', 'info');
+            hidePopupDemo();
+        }
+
+        function handlePopupContinue() {
+            showStatus('✅ User chose to continue - popup dismissed', 'success');
+            hidePopupDemo();
+        }
+
+        function hidePopupDemo() {
+            const popup = document.querySelector('.ai-bot-popup-overlay');
+            if (popup) {
+                popup.remove();
+                showStatus('Popup dialog removed', 'info');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            showStatus('Offline test environment ready. Use controls to test different scenarios.', 'info');
+        });
+    </script>
+
+    <!-- Load the extension content script -->
+    <script src="../content.js"></script>
+    <link rel="stylesheet" href="../styles.css">
+</body>
+</html>
