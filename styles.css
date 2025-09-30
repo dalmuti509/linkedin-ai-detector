@@ -1,0 +1,127 @@
+/* LinkedIn AI Bot Detector Styles */
+
+.ai-bot-overlay {
+  position: absolute !important;
+  top: -5px !important;
+  right: -5px !important;
+  background: #ff4444 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  z-index: 1000 !important;
+  border: 2px solid white !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  pointer-events: none !important;
+  animation: pulse 2s infinite !important;
+}
+
+.verified-profile-overlay {
+  position: absolute !important;
+  top: -5px !important;
+  right: -5px !important;
+  background: #4CAF50 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  z-index: 1000 !important;
+  border: 2px solid white !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  pointer-events: none !important;
+  animation: verifiedPulse 3s infinite !important;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes verifiedPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+}
+
+/* Ensure profile containers are positioned relatively */
+.presence-entity__image,
+.feed-shared-actor__avatar,
+.update-components-actor__avatar,
+.pv-top-card__photo,
+.artdeco-entity-lockup__image,
+.search-results__image,
+.entity-result__image,
+.org-people-profile-card__profile-photo,
+.people-card__profile-photo {
+  position: relative !important;
+}
+
+/* Style for detected AI bot profiles */
+.ai-bot-detected {
+  border: 2px solid #ff4444 !important;
+  border-radius: 4px !important;
+}
+
+/* Tooltip for AI bot overlay */
+.ai-bot-overlay::after {
+  content: "AI Bot Detected" !important;
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: #333 !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s !important;
+  z-index: 1001 !important;
+}
+
+.ai-bot-overlay:hover::after {
+  opacity: 1 !important;
+}
+
+/* Additional styling for different LinkedIn layouts */
+.linkedin-ai-detector-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  background: linear-gradient(45deg, #ff4444, #ff6666) !important;
+  color: white !important;
+  border-radius: 0 0 0 8px !important;
+  padding: 2px 6px !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  z-index: 1000 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+}
