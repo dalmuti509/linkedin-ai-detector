@@ -1315,18 +1315,32 @@ class AIDetector {
       backgroundColor: overlay.style.backgroundColor
     });
     
-    // Add to the profile image container
-    let imageContainer = element.closest('div');
-    let ancestor = element;
+    // Add to the profile image container - NEVER add to IMG element itself
+    let imageContainer = element.parentElement;
+    
+    // Find a proper div container, not the img element
+    let ancestor = element.parentElement;
     while (ancestor && ancestor !== document.body) {
-      const style = ancestor instanceof Element ? window.getComputedStyle(ancestor) : null;
-      if (style && style.position !== 'static') { 
-        imageContainer = ancestor; 
-        break; 
+      if (ancestor.tagName === 'DIV' && ancestor !== element) {
+        const style = window.getComputedStyle(ancestor);
+        if (style.position !== 'static') { 
+          imageContainer = ancestor; 
+          break; 
+        }
       }
       ancestor = ancestor.parentElement;
     }
-    if (!imageContainer) imageContainer = element.parentElement;
+    
+    // If we still don't have a good container, create one
+    if (!imageContainer || imageContainer.tagName === 'IMG') {
+      log('🔧 Creating wrapper div for overlay');
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'relative';
+      wrapper.style.display = 'inline-block';
+      element.parentNode.insertBefore(wrapper, element);
+      wrapper.appendChild(element);
+      imageContainer = wrapper;
+    }
     
     if (imageContainer) {
       imageContainer.style.position = 'relative';
