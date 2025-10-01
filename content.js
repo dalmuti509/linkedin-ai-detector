@@ -1301,7 +1301,19 @@ class AIDetector {
     overlay.style.position = 'absolute';
     overlay.style.top = '-5px';
     overlay.style.right = '-5px';
+    overlay.style.zIndex = '9999';
+    overlay.style.backgroundColor = '#FF0000'; // Temporary bright red for debugging
+    overlay.style.border = '3px solid yellow';
+    overlay.style.width = '30px';
+    overlay.style.height = '30px';
     log('🎨 Created verified overlay element:', overlay);
+    log('🎨 Overlay styles:', {
+      position: overlay.style.position,
+      top: overlay.style.top,
+      right: overlay.style.right,
+      zIndex: overlay.style.zIndex,
+      backgroundColor: overlay.style.backgroundColor
+    });
     
     // Add to the profile image container
     let imageContainer = element.closest('div');
@@ -1320,6 +1332,21 @@ class AIDetector {
       imageContainer.style.position = 'relative';
       imageContainer.appendChild(overlay);
       log('✅ Verified overlay added to container:', imageContainer);
+      log('📦 Container info:', {
+        tagName: imageContainer.tagName,
+        className: imageContainer.className,
+        id: imageContainer.id,
+        position: imageContainer.style.position,
+        offsetWidth: imageContainer.offsetWidth,
+        offsetHeight: imageContainer.offsetHeight
+      });
+      log('📍 Overlay final position:', {
+        offsetTop: overlay.offsetTop,
+        offsetLeft: overlay.offsetLeft,
+        offsetWidth: overlay.offsetWidth,
+        offsetHeight: overlay.offsetHeight,
+        computedStyle: window.getComputedStyle(overlay).position
+      });
     } else {
       log('❌ No suitable container found for verified overlay');
     }
