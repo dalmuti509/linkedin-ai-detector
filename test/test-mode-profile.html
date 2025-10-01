@@ -146,6 +146,129 @@
             color: #333;
         }
 
+        /* About this profile dialog styles */
+        .about-profile-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .about-profile-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .about-profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .about-profile-title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .about-profile-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .about-profile-close:hover {
+            color: #333;
+        }
+
+        .about-profile-body {
+            padding: 20px 24px;
+        }
+
+        .about-profile-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .about-profile-section {
+            margin-bottom: 20px;
+        }
+
+        .about-profile-detail {
+            display: flex;
+            margin-bottom: 12px;
+        }
+
+        .about-profile-detail-label {
+            font-weight: 600;
+            color: #333;
+            min-width: 120px;
+        }
+
+        .about-profile-detail-value {
+            color: #666;
+        }
+
+        .about-profile-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .about-profile-verification-icon {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .about-profile-verifications {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .about-profile-verification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .about-profile-verification-text {
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .about-profile-verification-date {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
         .test-mode-notice {
             background: #fff3cd;
             border: 1px solid #ffeaa7;
@@ -189,7 +312,7 @@
                 <div class="pv-top-card__action-buttons">
                     <button>Connect</button>
                     <button>Message</button>
-                    <button>More</button>
+                    <button onclick="showAbout()">More</button>
                 </div>
             </div>
         </div>
@@ -206,7 +329,70 @@
         </div>
     </div>
 
+    <!-- About this profile dialog -->
+    <div id="about-profile-dialog" class="about-profile-dialog">
+        <div class="about-profile-content">
+            <div class="about-profile-header">
+                <h3 class="about-profile-title">About this profile</h3>
+                <button class="about-profile-close" onclick="closeAboutProfile()">&times;</button>
+            </div>
+            <div class="about-profile-body">
+                <div class="about-profile-name" id="about-profile-name">Alexander Smith</div>
+                
+                <div class="about-profile-section">
+                    <div class="about-profile-detail">
+                        <span class="about-profile-detail-label">Joined:</span>
+                        <span class="about-profile-detail-value" id="about-profile-joined">September 2022</span>
+                    </div>
+                    <div class="about-profile-detail">
+                        <span class="about-profile-detail-label">Contact information:</span>
+                        <span class="about-profile-detail-value">Updated over 1 year ago</span>
+                    </div>
+                    <div class="about-profile-detail">
+                        <span class="about-profile-detail-label">Profile photo:</span>
+                        <span class="about-profile-detail-value">Updated over 1 year ago</span>
+                    </div>
+                </div>
+                
+                <div class="about-profile-section">
+                    <div class="about-profile-section-title">
+                        <span>Verifications</span>
+                        <span class="about-profile-verification-icon">✓</span>
+                    </div>
+                    <div class="about-profile-verifications">
+                        <div class="about-profile-verification-item">
+                            <div>
+                                <div class="about-profile-verification-text">
+                                    <strong>Workplace:</strong> Google: Verified using work email
+                                </div>
+                                <div class="about-profile-verification-date">Less than 1 year ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // About profile functionality
+        function showAbout() {
+            const dialog = document.getElementById('about-profile-dialog');
+            dialog.style.display = 'flex';
+        }
+
+        function closeAboutProfile() {
+            const dialog = document.getElementById('about-profile-dialog');
+            dialog.style.display = 'none';
+        }
+
+        // Close dialog when clicking outside
+        document.addEventListener('click', function(event) {
+            const dialog = document.getElementById('about-profile-dialog');
+            if (event.target === dialog) {
+                closeAboutProfile();
+            }
+        });
         // Simulate LinkedIn URL structure for extension detection
         if (window.history && window.history.replaceState && location.protocol !== 'file:') {
             const currentUrl = window.location.href;
