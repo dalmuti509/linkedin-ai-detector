@@ -690,7 +690,36 @@ class AIDetector {
       }
       
       this.autoClickAttempted = true;
-      log('🔍 Attempting to get profile age by clicking More button...');
+      
+      // First, try to extract age data directly from hidden dialog elements
+      log('🔍 Attempting to get profile age directly from DOM...');
+      const directSelectors = [
+        '#about-profile-joined',
+        '.about-profile-detail-value',
+        '[data-testid="about-profile-joined"]',
+        '.pv-top-card__experience-list-item',
+        '.pv-top-card__headline'
+      ];
+      
+      for (const selector of directSelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const text = element.textContent?.trim() || '';
+          log('📄 Found direct element:', selector, 'Content:', text);
+          
+          if (text && (text.includes('September') || text.includes('Joined') || text.includes('2022') || text.includes('2023') || text.includes('2024'))) {
+            const age = this.parseProfileAge(text);
+            if (age !== null && age !== undefined) {
+              info.profileAge = age;
+              log('✅ Profile age extracted directly from DOM:', age);
+              return;
+            }
+          }
+        }
+      }
+      
+      // If direct extraction failed, try the dialog approach
+      log('🔍 Direct extraction failed, trying dialog approach...');
       
       // Look for the "More" button
       const moreButtonSelectors = [
