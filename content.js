@@ -1335,8 +1335,18 @@ class AIDetector {
       }
     }
     
-    // If we still don't have a good container, create one around the image
-    if (!imageContainer || imageContainer.tagName === 'IMG') {
+    // The pv-top-card__photo container is too wide (includes text content)
+    // We need to create a wrapper specifically around the image
+    if (imageContainer && imageContainer.className.includes('pv-top-card__photo')) {
+      log('🔧 pv-top-card__photo is too wide, creating image wrapper');
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'relative';
+      wrapper.style.display = 'inline-block';
+      element.parentNode.insertBefore(wrapper, element);
+      wrapper.appendChild(element);
+      imageContainer = wrapper;
+      log('🎯 Created image-specific wrapper:', wrapper);
+    } else if (!imageContainer || imageContainer.tagName === 'IMG') {
       log('🔧 Creating wrapper div for overlay around image');
       const wrapper = document.createElement('div');
       wrapper.style.position = 'relative';
