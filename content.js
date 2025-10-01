@@ -286,9 +286,13 @@ class AIDetector {
     }
 
     if (isAIBot) {
+      log('🤖 AI Bot detected - adding overlay icon');
       this.addOverlayIcon(mainPhoto);
     } else if (isVerified) {
+      log('✅ Verified profile detected - adding verified icon');
       this.addVerifiedIcon(mainPhoto);
+    } else {
+      log('❌ Profile is neither AI bot nor verified - no overlay');
     }
 
     this.lastVerboseLogAtMs = nowMs;
@@ -1274,8 +1278,13 @@ class AIDetector {
   }
 
   addVerifiedIcon(element) {
+    log('🎯 Adding verified icon to element:', element);
+    
     // Check if overlay already exists
-    if (element.querySelector('.verified-profile-overlay')) return;
+    if (element.querySelector('.verified-profile-overlay')) {
+      log('⚠️ Verified overlay already exists, skipping');
+      return;
+    }
 
     // Make sure the parent container is positioned relatively
     const container = element.closest('div') || element.parentElement;
@@ -1283,6 +1292,7 @@ class AIDetector {
       const computedStyle = window.getComputedStyle(container);
       if (computedStyle.position === 'static') {
         container.style.position = 'relative';
+        log('🔧 Set container position to relative');
       }
     }
 
@@ -1291,19 +1301,27 @@ class AIDetector {
     overlay.style.position = 'absolute';
     overlay.style.top = '-5px';
     overlay.style.right = '-5px';
+    log('🎨 Created verified overlay element:', overlay);
     
     // Add to the profile image container
     let imageContainer = element.closest('div');
     let ancestor = element;
     while (ancestor && ancestor !== document.body) {
       const style = ancestor instanceof Element ? window.getComputedStyle(ancestor) : null;
-      if (style && style.position !== 'static') { imageContainer = ancestor; break; }
+      if (style && style.position !== 'static') { 
+        imageContainer = ancestor; 
+        break; 
+      }
       ancestor = ancestor.parentElement;
     }
     if (!imageContainer) imageContainer = element.parentElement;
+    
     if (imageContainer) {
       imageContainer.style.position = 'relative';
       imageContainer.appendChild(overlay);
+      log('✅ Verified overlay added to container:', imageContainer);
+    } else {
+      log('❌ No suitable container found for verified overlay');
     }
   }
 }
