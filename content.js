@@ -1315,25 +1315,29 @@ class AIDetector {
       backgroundColor: overlay.style.backgroundColor
     });
     
-    // Add to the profile image container - NEVER add to IMG element itself
+    // Find the immediate parent of the image (profile photo container)
     let imageContainer = element.parentElement;
     
-    // Find a proper div container, not the img element
-    let ancestor = element.parentElement;
-    while (ancestor && ancestor !== document.body) {
-      if (ancestor.tagName === 'DIV' && ancestor !== element) {
-        const style = window.getComputedStyle(ancestor);
-        if (style.position !== 'static') { 
-          imageContainer = ancestor; 
-          break; 
+    // Look for the profile photo container specifically
+    // First check if the immediate parent is the photo container
+    if (imageContainer && imageContainer.className.includes('pv-top-card__photo')) {
+      log('🎯 Found pv-top-card__photo container:', imageContainer.className);
+    } else {
+      // Look for the photo container in the parent hierarchy
+      let ancestor = element.parentElement;
+      while (ancestor && ancestor !== document.body) {
+        if (ancestor.className.includes('pv-top-card__photo')) {
+          imageContainer = ancestor;
+          log('🎯 Found pv-top-card__photo container in hierarchy:', ancestor.className);
+          break;
         }
+        ancestor = ancestor.parentElement;
       }
-      ancestor = ancestor.parentElement;
     }
     
-    // If we still don't have a good container, create one
+    // If we still don't have a good container, create one around the image
     if (!imageContainer || imageContainer.tagName === 'IMG') {
-      log('🔧 Creating wrapper div for overlay');
+      log('🔧 Creating wrapper div for overlay around image');
       const wrapper = document.createElement('div');
       wrapper.style.position = 'relative';
       wrapper.style.display = 'inline-block';
