@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Age-Only Suspicious Profile - LinkedIn AI Detector Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f3f2ef;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .pv-top-card {
+            padding: 24px;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .pv-top-card__photo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .pv-top-card-profile-picture__image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .pv-top-card__title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 8px 0;
+        }
+
+        .pv-top-card__headline {
+            font-size: 1.1rem;
+            color: #666;
+            margin: 0 0 8px 0;
+        }
+
+        .pv-top-card__location {
+            font-size: 1rem;
+            color: #666;
+            margin: 0 0 8px 0;
+        }
+
+        .pv-top-card__connections {
+            font-size: 1rem;
+            color: #666;
+            margin: 0 0 8px 0;
+        }
+
+        .pv-top-card__joined-date {
+            font-size: 0.9rem;
+            color: #999;
+            margin: 0 0 20px 0;
+        }
+
+        .pv-top-card__actions {
+            margin-top: 20px;
+        }
+
+        .pv-top-card__action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .pv-top-card__action-buttons button {
+            padding: 8px 16px;
+            border: 1px solid #0073b1;
+            background: #0073b1;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .pv-top-card__action-buttons button:last-child {
+            background: white;
+            color: #0073b1;
+        }
+
+        .profile-info {
+            padding: 24px;
+            background: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .profile-info h4 {
+            margin: 0 0 16px 0;
+            color: #333;
+        }
+
+        .profile-info ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .profile-info li {
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .navigation {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            padding: 8px 16px;
+            background: #0073b1;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .nav-links a:hover {
+            background: #005885;
+        }
+
+        .nav-links a.active {
+            background: #dc3545;
+        }
+
+        .test-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navigation">
+            <h3>🔄 Profile Navigation</h3>
+            <div class="nav-links">
+                <a href="normal-profile.html">Normal Profile</a>
+                <a href="suspicious-profile.html">Suspicious Profile</a>
+                <a href="verified-profile.html">Verified Profile</a>
+                <a href="test-mode-profile.html">Test Mode Profile</a>
+                <a href="age-only-suspicious.html" class="active">Age-Only Suspicious</a>
+                <a href="linkedin-test-profiles.html">All Profiles</a>
+            </div>
+        </div>
+
+        <div class="test-notice">
+            <strong>🧪 Single Indicator Test:</strong> This profile should be flagged as suspicious based on profile age alone (15 days < 30 days), even though connections and location are normal.
+        </div>
+
+        <div class="pv-top-card">
+            <div class="pv-top-card__photo">
+                <img class="pv-top-card-profile-picture__image" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNDAiIGZpbGw9IiNmZjY2MDAiLz4KPHN2ZyB4PSIyMCIgeT0iMjAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDE2QzE2IDE3Ljc5MDkgMTQuMjA5MSAxNiAxMiAxNkM5Ljc5MDg2IDE2IDggMTcuNzkwOSA4IDIwSDZDNiAxNi42ODYzIDguNjg2MyAxNCAxMiAxNFoiLz4KPC9zdmc+Cjwvc3ZnPgo=" alt="Mike Wilson profile photo">
+                <div>
+                    <h1 class="pv-top-card__title">Mike Wilson</h1>
+                    <p class="pv-top-card__headline">Senior Software Engineer at Microsoft in Seattle, WA</p>
+                    <p class="pv-top-card__location">Seattle, WA</p>
+                    <p class="pv-top-card__connections">500+ connections</p>
+                    <p class="pv-top-card__joined-date">Joined LinkedIn 15 days ago</p>
+                </div>
+            </div>
+            <div class="pv-top-card__actions">
+                <div class="pv-top-card__action-buttons">
+                    <button>Connect</button>
+                    <button>Message</button>
+                    <button onclick="showAbout()">More</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-info">
+            <h4>📊 Profile Information</h4>
+            <ul>
+                <li><strong>Profile Age:</strong> 15 days (suspicious - less than 30 days)</li>
+                <li><strong>Connections:</strong> 500+ (normal - meets 30+ threshold)</li>
+                <li><strong>Location:</strong> Seattle, WA (matches company location)</li>
+                <li><strong>Expected Result:</strong> Red robot overlay (🤖) - AI Bot detected due to profile age alone</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- About this profile dialog -->
+    <div id="about-profile-dialog" class="about-profile-dialog">
+        <div class="about-profile-content">
+            <div class="about-profile-header">
+                <h3 class="about-profile-title">About this profile</h3>
+                <button class="about-profile-close" onclick="closeAboutProfile()">&times;</button>
+            </div>
+            <div class="about-profile-body">
+                <div class="about-profile-name" id="about-profile-name">Mike Wilson</div>
+                
+                <div class="about-profile-section">
+                    <div class="about-profile-detail">
+                        <span class="about-profile-detail-label">Joined:</span>
+                        <span class="about-profile-detail-value" id="about-profile-joined">15 days ago</span>
+                    </div>
+                    <div class="about-profile-detail">
+                        <span class="about-profile-detail-label">Contact information:</span>
+                        <span class="about-profile-detail-value">Updated 15 days ago</span>
+                    </div>
+                    <div class="about-profile-detail">
+                        <span class="about-profile-detail-label">Profile photo:</span>
+                        <span class="about-profile-detail-value">Updated 15 days ago</span>
+                    </div>
+                </div>
+                
+                <div class="about-profile-section">
+                    <div class="about-profile-section-title">
+                        <span>Verifications</span>
+                        <span class="about-profile-verification-icon">✓</span>
+                    </div>
+                    <div class="about-profile-verifications">
+                        <div class="about-profile-verification-item">
+                            <div>
+                                <div class="about-profile-verification-text">
+                                    <strong>Workplace:</strong> Microsoft: Verified using work email
+                                </div>
+                                <div class="about-profile-verification-date">15 days ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // About profile functionality
+        function showAbout() {
+            const dialog = document.getElementById('about-profile-dialog');
+            dialog.style.display = 'flex';
+        }
+
+        function closeAboutProfile() {
+            const dialog = document.getElementById('about-profile-dialog');
+            dialog.style.display = 'none';
+        }
+
+        // Close dialog when clicking outside
+        document.addEventListener('click', function(event) {
+            const dialog = document.getElementById('about-profile-dialog');
+            if (event.target === dialog) {
+                closeAboutProfile();
+            }
+        });
+
+        // Simulate LinkedIn URL structure for extension detection
+        if (window.history && window.history.replaceState && location.protocol !== 'file:') {
+            const currentUrl = window.location.href;
+            const newUrl = currentUrl.replace('age-only-suspicious.html', 'in/mike-wilson');
+            window.history.replaceState({}, '', newUrl);
+            console.log('🔄 URL changed to:', newUrl);
+        } else if (location.protocol === 'file:') {
+            console.log('📁 Running on file:// protocol - URL simulation skipped');
+        }
+
+        // Check if extension is loaded
+        setTimeout(() => {
+            if (window.linkedinAIDetector) {
+                console.log('✅ LinkedIn AI Detector extension is loaded and active');
+            } else {
+                console.log('❌ LinkedIn AI Detector extension not detected');
+                console.log('💡 Make sure to:');
+                console.log('   1. Load the extension in chrome://extensions/');
+                console.log('   2. Reload this page after loading the extension');
+            }
+        }, 2000);
+    </script>
+
+    <style>
+        /* About this profile dialog styles */
+        .about-profile-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .about-profile-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .about-profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .about-profile-title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .about-profile-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .about-profile-close:hover {
+            color: #333;
+        }
+
+        .about-profile-body {
+            padding: 20px 24px;
+        }
+
+        .about-profile-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .about-profile-section {
+            margin-bottom: 20px;
+        }
+
+        .about-profile-detail {
+            display: flex;
+            margin-bottom: 12px;
+        }
+
+        .about-profile-detail-label {
+            font-weight: 600;
+            color: #333;
+            min-width: 120px;
+        }
+
+        .about-profile-detail-value {
+            color: #666;
+        }
+
+        .about-profile-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .about-profile-verification-icon {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .about-profile-verifications {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .about-profile-verification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .about-profile-verification-text {
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .about-profile-verification-date {
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</body>
+</html>

@@ -964,8 +964,8 @@ class AIDetector {
       });
     }
     
-    // Consider it suspicious if it has 2 or more indicators
-    return suspiciousIndicators.length >= 2;
+    // Consider it suspicious if it has any suspicious indicators
+    return suspiciousIndicators.length >= 1;
   }
 
   locationsMatch(profileLocation, companyLocation) {

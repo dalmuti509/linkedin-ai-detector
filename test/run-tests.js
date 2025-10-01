@@ -100,12 +100,12 @@ function testAIBotDetection() {
         suspiciousIndicators.push(`Location mismatch: Profile (${profile.profileLocation}) vs Company (${profile.companyLocation})`);
     }
     
-    const isAIBot = suspiciousIndicators.length >= 2;
+    const isAIBot = suspiciousIndicators.length >= 1;
     
     console.log(`  Suspicious indicators: ${suspiciousIndicators.length}`);
     console.log(`  Indicators: ${suspiciousIndicators.join(', ')}`);
     
-    return isAIBot && suspiciousIndicators.length >= 2;
+    return isAIBot && suspiciousIndicators.length >= 1;
 }
 
 function testVerifiedDetection() {
