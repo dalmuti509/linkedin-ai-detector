@@ -145,6 +145,9 @@ class AIDetector {
     const nowMs = Date.now();
     const shouldVerboseLog = nowMs - this.lastVerboseLogAtMs > 60_000;
     
+    log('🔍 detectAIBots called - URL:', window.location.href);
+    log('🔍 detectAIBots called - Title:', document.title);
+    
     // Prevent multiple simultaneous scans
     if (this.isScanning) {
       if (shouldVerboseLog) {
@@ -266,6 +269,11 @@ class AIDetector {
     // Build and evaluate a single profile summary from the main photo context
     const profileInfo = await this.extractProfileInfo(mainPhoto);
     if (shouldVerboseLog) log('📄 Profile summary:', profileInfo);
+    
+    // Add debugging for profile detection
+    log('🔍 Detected profile name:', profileInfo.name);
+    log('🔍 Profile title:', profileInfo.title);
+    log('🔍 Profile connections:', profileInfo.connectionCount);
 
     if (this.testMode && this.isTestModeProfile(profileInfo)) {
       if (shouldVerboseLog) log('🧪 Test mode: flagging main profile');
