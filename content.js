@@ -794,9 +794,18 @@ class AIDetector {
         }
       }
       
-            // Close the dialog by clicking outside or pressing Escape
+            // Close the dialog by clicking the close button or other methods
             try {
-              // Try multiple methods to close the dialog
+              // Try clicking the specific close button first (for test page)
+              const closeButton = document.querySelector('.about-profile-close, .artdeco-modal__dismiss, .modal-close, [aria-label="Dismiss"]');
+              if (closeButton) {
+                closeButton.click();
+                log('✅ Dialog closed via close button');
+                await this.sleep(500);
+                return;
+              }
+              
+              // Try clicking outside the dialog
               document.body.click();
               await this.sleep(500);
               
@@ -811,7 +820,7 @@ class AIDetector {
               await this.sleep(500);
               
               // Try clicking the backdrop if it exists
-              const backdrop = document.querySelector('.artdeco-modal-overlay, .modal-backdrop, .dialog-overlay');
+              const backdrop = document.querySelector('.artdeco-modal-overlay, .modal-backdrop, .dialog-overlay, .about-profile-dialog');
               if (backdrop) {
                 backdrop.click();
                 await this.sleep(500);
